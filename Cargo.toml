@@ -1,0 +1,11 @@
+[package]
+name = "bevy_rollback"
+version = "0.1.0"
+authors = ["James <jamescarterbell@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ron = "0.6.4"
+bevy = "0.5"
