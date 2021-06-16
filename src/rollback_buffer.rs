@@ -11,75 +11,73 @@ use bevy::reflect::*;
 use ron::de::*;
 
 pub struct RollbackBuffer{
-    buffer: VecDeque<World>,
+    buffer: Vec<Option<World>>,
     overrides: HashMap<usize, SystemStage>,
-    count: usize,
+    current_frame: usize,
+    rollback_needed: usize,
 }
 
 impl RollbackBuffer{
     pub fn with_capacity(capacity: usize) -> RollbackBuffer{
-        RollbackBuffer{
-            buffer: VecDeque::with_capacity(capacity),
+        let mut buf = RollbackBuffer{
+            buffer: Vec::with_capacity(capacity),
             overrides: HashMap::default(),
-            count: 0,
+            current_frame: 0,
+            rollback_needed: 0,
+        };
+        for _ in 0..capacity{
+            buf.buffer.push(None);
         }
+        buf
     }
 
     /// Pushes a new world to the buffer, returns the serialized world that needs to be popped
     /// from the buffer.
     pub fn push_world(&mut self, world: &World, registry: &TypeRegistry) -> std::result::Result<Option<World>, RollbackError>{
-        let throw_away = match self.buffer.len() == self.buffer.capacity(){
-            true => {
-                let mut throw_away = self.buffer.pop_front().unwrap();
-                if let Some(mut stage) = self.overrides.remove(&self.count){
-                    stage.run(&mut throw_away);
-                }
-                self.count += 1;
-                Some(throw_away)
-            },
-            false => None,
-        };
-
-        self
+        let len = self.buffer.len();
+        let old_world = self
             .buffer
-            .push_back(clone_world(world, &registry)?);
+            .get_mut(self.current_frame % len)
+            .unwrap()
+            .replace(clone_world(world, &registry)?);
+        self.current_frame += 1;
 
-        Ok(throw_away)
+        Ok(old_world)
     }
 
     /// Gets the world at the given index without changing the internal buffer.
     pub fn get_world(&self, index: usize) -> Option<&World>{
-        if index < self.count{
+        if self.current_frame - index > self.buffer.len(){
             return None;
         }
         self
             .buffer
-            .get(index - self.count)
+            .get(index % self.buffer.len())
+            .unwrap()
+            .as_ref()
     }
 
     pub fn get_world_mut(&mut self, index: usize) -> Option<&mut World>{
-        if index < self.count{
+        let len = self.buffer.len();
+        if self.current_frame - index > len{
             return None;
         }
         self
             .buffer
-            .get_mut(index - self.count)
-    }
-
-    /// Gets the world at the given index and drains all worlds after it from the buffer.
-    pub fn pop_world(&mut self, index: usize) -> Option<World>{
-        if index < self.count{
-            return None;
-        }
-        self
-            .buffer
-            .drain((index - self.count)..)
-            .nth(0)
+            .get_mut(index % len)
+            .unwrap()
+            .as_mut()
     }
 
     pub fn add_overrides(&mut self, index: &usize, overrides: impl System<In = (), Out = ()>){
-        if let Some(stage) = self.overrides.get_mut(&index){
-            stage.add_system(overrides);
+        self
+            .overrides
+            .entry(*index)
+            .or_insert(SystemStage::parallel())
+            .add_system(overrides);
+        let relative_frame = self.current_frame - index;
+        if relative_frame < self.rollback_needed{
+            self.rollback_needed = relative_frame;
         }
     }
 
