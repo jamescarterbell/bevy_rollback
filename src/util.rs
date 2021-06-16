@@ -14,8 +14,8 @@ use bevy::{
     ecs::entity::EntityMap,
 };
 
-pub fn clone_rollback_world_entities(source_world: &World, target_world: &mut World, entity_map: &mut EntityMap, registry: &TypeRegistry) -> Result<(), RollbackError>{
-    let type_registry = registry.read();
+pub fn clone_rollback_world_entities(source_world: &World, target_world: &mut World, entity_map: &mut EntityMap, registry: &RollbackRegistry) -> Result<(), RollbackError>{
+    let type_registry = registry.registry.read();
     for archetype in source_world.archetypes().iter() {
         for entity in archetype.entities() {
             entity_map
@@ -29,23 +29,35 @@ pub fn clone_rollback_world_entities(source_world: &World, target_world: &mut Wo
                 .get_info(component_id)
                 .and_then(|info| type_registry.get(info.type_id().unwrap()))
                 .and_then(|registration| registration.data::<ReflectComponent>())
-                .ok_or(RollbackError::UnregisteredType(
+                .ok_or(
                     source_world
                         .components()
                         .get_info(component_id)
                         .unwrap()
-                        .name()
-                        .to_string()))?;
+                        .type_id()
+                        .unwrap());
             
-            for (i, entity) in archetype.entities().iter().enumerate() {
-                reflect_component
-                    .copy_component(
-                        source_world,
-                        target_world,
-                        entity.clone(),
-                        entity_map.get(entity.clone()).unwrap(),
-                    )
-            }
+            match reflect_component{
+                Ok(reflect_component) => for (i, entity) in archetype.entities().iter().enumerate() {
+                        reflect_component
+                            .copy_component(
+                                source_world,
+                                target_world,
+                                entity.clone(),
+                                entity_map.get(entity.clone()).unwrap(),
+                            )
+                    },
+                Err(id) => {
+                    if let None = registry.unregisterable.get(&id){
+                        return Err(RollbackError::UnregisteredType(source_world
+                            .components()
+                            .get_info(component_id)
+                            .unwrap()
+                            .name()
+                            .to_owned()));
+                    }
+                }
+            };
         }
     }
 
@@ -60,8 +72,8 @@ pub fn clone_rollback_world_entities(source_world: &World, target_world: &mut Wo
     Ok(())
 }
 
-pub fn clone_rollback_world_resources(source_world: &World, target_world: &mut World, entity_map: &mut EntityMap, registry: &TypeRegistry) -> Result<(), RollbackError>{
-    let type_registry = registry.read();
+pub fn clone_rollback_world_resources(source_world: &World, target_world: &mut World, entity_map: &mut EntityMap, registry: &RollbackRegistry) -> Result<(), RollbackError>{
+    let type_registry = registry.registry.read();
     let archetype = source_world.archetypes().resource();
 
     for component_id in archetype.unique_components().indices(){
@@ -70,18 +82,31 @@ pub fn clone_rollback_world_resources(source_world: &World, target_world: &mut W
             .get_info(component_id)
             .and_then(|info| type_registry.get(info.type_id().unwrap()))
             .and_then(|registration| registration.data::<ReflectResource>())
-            .ok_or(RollbackError::UnregisteredType(
+            .ok_or(
                 source_world
                     .components()
                     .get_info(component_id)
                     .unwrap()
-                    .name()
-                    .to_string()))?;
-        
-        reflect_resource.copy_resource(
-            source_world,
-            target_world,
-        )
+                    .type_id()
+                    .unwrap());
+        match reflect_resource{
+            Ok(reflect_resource) =>{
+                reflect_resource.copy_resource(
+                    source_world,
+                    target_world,
+                )
+            }
+            Err(id) => {
+                if let None = registry.unregisterable.get(&id){
+                    return Err(RollbackError::UnregisteredType(source_world
+                        .components()
+                        .get_info(component_id)
+                        .unwrap()
+                        .name()
+                        .to_owned()));
+                }
+            }
+        }
     }
 
     for registration in type_registry.iter() {
@@ -94,7 +119,7 @@ pub fn clone_rollback_world_resources(source_world: &World, target_world: &mut W
     return Ok(());
 }
 
-pub fn clone_world(source_world: &World, registry: &TypeRegistry) -> Result<World, RollbackError>{
+pub fn clone_world(source_world: &World, registry: &RollbackRegistry) -> Result<World, RollbackError>{
     let mut target_world = World::default();
     let mut entity_map = EntityMap::default();
     clone_rollback_world_entities(source_world, &mut target_world, &mut entity_map, &registry)?;

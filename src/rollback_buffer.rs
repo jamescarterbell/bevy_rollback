@@ -1,3 +1,4 @@
+use crate::rollback_registry::RollbackRegistry;
 use std::collections::HashMap;
 use crate::err::RollbackError;
 use crate::util::clone_world;
@@ -33,14 +34,13 @@ impl RollbackBuffer{
 
     /// Pushes a new world to the buffer, returns the serialized world that needs to be popped
     /// from the buffer.
-    pub fn push_world(&mut self, world: &World, registry: &TypeRegistry) -> std::result::Result<Option<World>, RollbackError>{
+    pub fn push_world(&mut self, index: &usize, world: &World, registry: &RollbackRegistry) -> std::result::Result<Option<World>, RollbackError>{
         let len = self.buffer.len();
         let old_world = self
             .buffer
-            .get_mut(self.current_frame % len)
+            .get_mut(index % len)
             .unwrap()
             .replace(clone_world(world, &registry)?);
-        self.current_frame += 1;
 
         Ok(old_world)
     }
@@ -76,12 +76,28 @@ impl RollbackBuffer{
             .or_insert(SystemStage::parallel())
             .add_system(overrides);
         let relative_frame = self.current_frame - index;
-        if relative_frame < self.rollback_needed{
+        if relative_frame > self.rollback_needed{
             self.rollback_needed = relative_frame;
         }
     }
 
-    pub fn get_override(&mut self, index: &usize) -> Option<&mut SystemStage>{
-        self.overrides.get_mut(&index)
+    pub fn remove_override(&mut self, index: &usize) -> Option<SystemStage>{
+        self.overrides.remove(&index)
+    }
+
+    pub fn current_frame(&self) -> usize{
+        self.current_frame
+    }
+
+    pub fn rollback_needed(&self) -> usize{
+        self.rollback_needed
+    }
+
+    pub(crate) fn inc_frame(&mut self){
+        self.current_frame += 1;
+    }
+
+    pub(crate) fn reset_rollback_needed(&mut self){
+        self.rollback_needed = 0;
     }
 }

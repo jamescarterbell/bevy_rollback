@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 ron = "0.6.4"
 bevy = "0.5"
+
+[dev-dependencies]
+serde = {version = "1.0.126", features = ["derive"]}
