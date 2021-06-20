@@ -1,4 +1,8 @@
+use crate::rollback_buffer::RollbackBuffer;
+use crate::rollback_registry::RollbackRegistry;
 use bevy::prelude::*;
+use rollback_schedule::RollbackSchedule;
+use system::{rollback_system, sync_rollback_entities};
 use std::ops::{Deref, DerefMut};
 
 pub mod rollback_registry;
@@ -35,10 +39,38 @@ impl DerefMut for RollbackWorld{
     }
 }
 
+#[derive(StageLabel, PartialEq, Eq, Hash, Clone, Debug)]
+pub struct RollbackStage;
+
+pub struct RollbackPlugin{
+    capacity: usize,
+}
+
+impl RollbackPlugin{
+    pub fn with_buffer_capcity(capacity: usize) -> Self{
+        Self{
+            capacity
+        }
+    }
+}
+
+impl Plugin for RollbackPlugin{
+    fn build(&self, app: &mut AppBuilder) {
+        app
+            .insert_resource(RollbackBuffer::with_capacity(self.capacity))
+            .insert_resource(RollbackWorld::default())
+            .insert_resource(RollbackRegistry::default())
+            .insert_resource(RollbackSchedule::default())
+            .add_stage_after(CoreStage::PreUpdate, RollbackStage, SystemStage::parallel())
+            .add_system_to_stage(RollbackStage, rollback_system.system())
+            .add_system_to_stage(RollbackStage, sync_rollback_entities.system());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use bevy::tasks::ComputeTaskPool;
-use bevy::prelude::*;
+    use bevy::prelude::*;
     use bevy::scene::{
         DynamicScene,
         serde::*,

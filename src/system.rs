@@ -15,7 +15,7 @@ pub(crate) fn rollback_system(
     if rollback_buffer.rollback_needed() > 0{
         let target = rollback_buffer.current_frame() - rollback_buffer.rollback_needed();
         let rollback_world = rollback_buffer.get_world_mut(target).expect("Couldn't find world in buffer");
-        overwrite_world(&rollback_world, &mut current_world, &rollback_registry);
+        overwrite_world(&rollback_world, &mut current_world, &rollback_registry).unwrap();
     }
 
     for relative in (0..=rollback_buffer.rollback_needed()).rev(){
@@ -30,4 +30,43 @@ pub(crate) fn rollback_system(
     rollback_buffer.reset_rollback_needed();
 
     rollback_buffer.inc_frame();
+}
+
+/// A component on a rollback entity to mark if it's been synced.
+pub(crate) struct SyncedRollback;
+
+/// A component on an outer world entity with a handle to a Rollback World entity.
+pub struct Synced{
+    target: Entity,
+}
+
+pub fn sync_rollback_entities(
+    mut commands: Commands,
+    mut rollback_world: ResMut<RollbackWorld>,
+    synced: Query<Entity, With<Synced>>,
+){
+    for entity in synced.iter(){
+        if let None = rollback_world.get_entity(entity){
+            commands
+                .entity(entity)
+                .despawn();
+        }
+    }
+
+    let mut syncable = Vec::new();
+
+    for entity in rollback_world.query_filtered::<Entity, Without<SyncedRollback>>().iter(&mut rollback_world){
+        commands
+            .spawn()
+            .insert(
+                Synced{target: entity.clone()}
+            );
+        syncable.push(entity.clone());
+    }
+
+    for syncable in syncable{
+        rollback_world
+            .entity_mut(syncable)
+            .insert(SyncedRollback);
+    }
 }

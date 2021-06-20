@@ -1,6 +1,7 @@
 use bevy::tasks::ComputeTaskPool;
 use bevy::ecs::entity::MapEntities;
 use crate::reflect_resource::ReflectMapEntitiesResources;
+use crate::system::SyncedRollback;
 use bevy::ecs::reflect::ReflectMapEntities;
 use bevy::{
     reflect::{
@@ -46,6 +47,7 @@ impl Default for RollbackRegistry{
         registry.register::<String>();
 
         registry.register_unreflectable::<ComputeTaskPool>();
+        registry.register_unreflectable::<SyncedRollback>();
         
         registry
    } 
