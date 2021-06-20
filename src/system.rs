@@ -1,3 +1,4 @@
+use crate::util::{overwrite_world};
 use bevy::tasks::ComputeTaskPool;
 use crate::rollback_registry::RollbackRegistry;
 use crate::rollback_schedule::RollbackSchedule;
@@ -14,7 +15,7 @@ pub(crate) fn rollback_system(
     if rollback_buffer.rollback_needed() > 0{
         let target = rollback_buffer.current_frame() - rollback_buffer.rollback_needed();
         let rollback_world = rollback_buffer.get_world_mut(target).expect("Couldn't find world in buffer");
-        std::mem::swap(&mut current_world.world, rollback_world);
+        overwrite_world(&rollback_world, &mut current_world, &rollback_registry);
     }
 
     for relative in (0..=rollback_buffer.rollback_needed()).rev(){

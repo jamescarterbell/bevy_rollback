@@ -8,6 +8,7 @@ use bevy::reflect::*;
 #[derive(Clone)]
 pub struct ReflectResource {
     add_resource: fn(&mut World, &dyn Reflect),
+    remove_resource: fn(&mut World),
     apply_resource: fn(&mut World, &dyn Reflect),
     reflect_resource: fn(&World) -> Option<&dyn Reflect>,
     copy_resource: fn(&World, &mut World),
@@ -16,6 +17,10 @@ pub struct ReflectResource {
 impl ReflectResource {
     pub fn add_resource(&self, world: &mut World, resource: &dyn Reflect) {
         (self.add_resource)(world, resource);
+    }
+
+    pub fn remove_resource(&self, world: &mut World){
+        (self.remove_resource)(world);
     }
 
     pub fn apply_resource(&self, world: &mut World, resource: &dyn Reflect) {
@@ -48,6 +53,9 @@ impl<C: Component + Reflect + FromWorld> FromType<C> for ReflectResource {
                 let mut resource = C::from_world(world);
                 resource.apply(reflected_resource);
                 world.insert_resource(resource);
+            },
+            remove_resource: |world| {
+                world.remove_resource::<C>();
             },
             apply_resource: |world, reflected_resource| {
                 let mut resource = world.get_resource_mut::<C>().unwrap();

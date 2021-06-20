@@ -126,3 +126,70 @@ pub fn clone_world(source_world: &World, registry: &RollbackRegistry) -> Result<
     clone_rollback_world_resources(source_world, &mut target_world, &mut entity_map, &registry)?;
     Ok(target_world)
 }
+
+pub fn clear_entities(world: &mut World){
+    let mut removals = Vec::new();
+    for entity in world.query::<bevy::ecs::entity::Entity>().iter(world){
+        removals.push(entity);
+    }
+    for entity in removals{
+        world.despawn(entity);
+    }
+}
+
+pub fn clear_resources(world: &mut World, registry: &RollbackRegistry) -> Result<(), RollbackError>{
+    let type_registry = registry.registry.read();
+    let archetype = world.archetypes().resource();
+
+    let mut removals = Vec::new();
+
+    for component_id in archetype.unique_components().indices(){
+        let reflect_resource = world
+            .components()
+            .get_info(component_id)
+            .and_then(|info| type_registry.get(info.type_id().unwrap()))
+            .and_then(|registration| registration.data::<ReflectResource>())
+            .ok_or(
+                world
+                    .components()
+                    .get_info(component_id)
+                    .unwrap()
+                    .type_id()
+                    .unwrap());
+        match reflect_resource{
+            Ok(reflect_resource) =>{
+                removals.push(reflect_resource);
+            }
+            Err(id) => {
+                if let None = registry.unregisterable.get(&id){
+                    return Err(RollbackError::UnregisteredType(world
+                        .components()
+                        .get_info(component_id)
+                        .unwrap()
+                        .name()
+                        .to_owned()));
+                }
+            }
+        }
+    }
+
+    for reflect_resource in removals{
+        reflect_resource.remove_resource(
+            world,
+        )
+    }
+    return Ok(());
+}
+
+pub fn clear_world(world: &mut World, registry: &RollbackRegistry) -> Result<(), RollbackError>{
+    clear_entities(world);
+    clear_resources(world, registry)
+}
+
+pub fn overwrite_world(source_world: &World, target_world: &mut World, registry: &RollbackRegistry) -> Result<(), RollbackError>{
+    clear_world(target_world, registry)?;
+    let mut entity_map = EntityMap::default();
+    clone_rollback_world_entities(source_world, target_world, &mut entity_map, &registry)?;
+    clone_rollback_world_resources(source_world, target_world, &mut entity_map, &registry)?;
+    Ok(())
+}
