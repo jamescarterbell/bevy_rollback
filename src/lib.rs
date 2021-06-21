@@ -2,7 +2,7 @@ use crate::rollback_buffer::RollbackBuffer;
 use crate::rollback_registry::RollbackRegistry;
 use bevy::prelude::*;
 use rollback_schedule::RollbackSchedule;
-use system::{rollback_system, sync_rollback_entities};
+use system::{rollback_startup, rollback_system, sync_rollback_entities};
 use std::ops::{Deref, DerefMut};
 
 pub mod rollback_registry;
@@ -40,7 +40,10 @@ impl DerefMut for RollbackWorld{
 }
 
 #[derive(StageLabel, PartialEq, Eq, Hash, Clone, Debug)]
-pub struct RollbackStage;
+pub enum RollbackStage{
+    Update,
+    Startup,
+}
 
 pub struct RollbackPlugin{
     capacity: usize,
@@ -61,9 +64,11 @@ impl Plugin for RollbackPlugin{
             .insert_resource(RollbackWorld::default())
             .insert_resource(RollbackRegistry::default())
             .insert_resource(RollbackSchedule::default())
-            .add_stage_after(CoreStage::PreUpdate, RollbackStage, SystemStage::parallel())
-            .add_system_to_stage(RollbackStage, rollback_system.system())
-            .add_system_to_stage(RollbackStage, sync_rollback_entities.system());
+            .add_stage_before(CoreStage::Update, RollbackStage::Update, SystemStage::parallel())
+            .add_system_to_stage(RollbackStage::Update, rollback_system.system())
+            .add_system_to_stage(RollbackStage::Update, sync_rollback_entities.system())
+            .add_startup_stage_before(CoreStage::Startup, RollbackStage::Startup, SystemStage::parallel())
+            .add_startup_system_to_stage(RollbackStage::Startup, rollback_startup.system());
     }
 }
 

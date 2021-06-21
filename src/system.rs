@@ -1,7 +1,7 @@
 use crate::util::{overwrite_world};
 use bevy::tasks::ComputeTaskPool;
 use crate::rollback_registry::RollbackRegistry;
-use crate::rollback_schedule::RollbackSchedule;
+use crate::rollback_schedule::{RollbackSchedule, RollbackStartupSchedule};
 use crate::rollback_buffer::RollbackBuffer;
 use crate::RollbackWorld;
 use bevy::prelude::*;
@@ -69,4 +69,11 @@ pub fn sync_rollback_entities(
             .entity_mut(syncable)
             .insert(SyncedRollback);
     }
+}
+
+pub fn rollback_startup(
+    mut rollback_world: ResMut<RollbackWorld>,
+    mut rollback_startup_schedule: ResMut<RollbackStartupSchedule>,
+){
+    rollback_startup_schedule.run(&mut rollback_world);
 }
