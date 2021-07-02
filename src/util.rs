@@ -220,7 +220,7 @@ pub trait AppBuilderRollbackUtil{
         stage: S
     ) -> &mut AppBuilder;
 
-    fn add_rollback_startup_system_to_stage<S: Stage>(
+    fn add_rollback_startup_system_to_stage(
         &mut self,
         label: impl StageLabel,
         system: impl Into<SystemDescriptor>
@@ -246,7 +246,7 @@ pub trait AppBuilderRollbackUtil{
         stage: S
     ) -> &mut AppBuilder;
 
-    fn add_rollback_system_to_stage<S: Stage>(
+    fn add_rollback_system_to_stage(
         &mut self,
         label: impl StageLabel,
         system: impl Into<SystemDescriptor>
@@ -298,7 +298,7 @@ impl AppBuilderRollbackUtil for AppBuilder{
         self
     }
 
-    fn add_rollback_startup_system_to_stage<S: Stage>(
+    fn add_rollback_startup_system_to_stage(
         &mut self,
         label: impl StageLabel,
         system: impl Into<SystemDescriptor>
@@ -356,7 +356,7 @@ impl AppBuilderRollbackUtil for AppBuilder{
         self
     }
 
-    fn add_rollback_system_to_stage<S>(
+    fn add_rollback_system_to_stage(
         &mut self,
         label: impl StageLabel,
         system: impl Into<SystemDescriptor>
