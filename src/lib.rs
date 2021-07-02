@@ -1,3 +1,5 @@
+use crate::rollback_schedule::RollbackStartupSchedule;
+use bevy::core::FixedTimestep;
 use crate::rollback_buffer::RollbackBuffer;
 use crate::rollback_registry::RollbackRegistry;
 use bevy::prelude::*;
@@ -12,6 +14,7 @@ pub mod reflect_resource;
 pub mod rollback_buffer;
 pub mod rollback_schedule;
 pub mod system;
+
 
 pub struct RollbackWorld{
     world: World,
@@ -47,12 +50,14 @@ pub enum RollbackStage{
 
 pub struct RollbackPlugin{
     capacity: usize,
+    rate: f64,
 }
 
 impl RollbackPlugin{
-    pub fn with_buffer_capcity(capacity: usize) -> Self{
+    pub fn with_buffer_capcity(capacity: usize, rate: f64) -> Self{
         Self{
-            capacity
+            capacity,
+            rate
         }
     }
 }
@@ -64,7 +69,9 @@ impl Plugin for RollbackPlugin{
             .insert_resource(RollbackWorld::default())
             .insert_resource(RollbackRegistry::default())
             .insert_resource(RollbackSchedule::default())
-            .add_stage_before(CoreStage::Update, RollbackStage::Update, SystemStage::parallel())
+            .insert_resource(RollbackStartupSchedule::default())
+            .add_stage_before(CoreStage::Update, RollbackStage::Update, SystemStage::parallel()
+                .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
             .add_system_to_stage(RollbackStage::Update, rollback_system.system())
             .add_system_to_stage(RollbackStage::Update, sync_rollback_entities.system())
             .add_startup_stage_before(CoreStage::Startup, RollbackStage::Startup, SystemStage::parallel())

@@ -1,3 +1,8 @@
+use bevy::ecs::schedule::Stage;
+use crate::RollbackStartupSchedule;
+use crate::rollback_schedule::RollbackSchedule;
+use bevy::app::AppBuilder;
+use bevy::ecs::schedule::{StageLabel, SystemDescriptor};
 use bevy::reflect::TypeRegistry;
 use bevy::ecs::reflect::ReflectMapEntities;
 use crate::reflect_resource::ReflectResource;
@@ -192,4 +197,176 @@ pub fn overwrite_world(source_world: &World, target_world: &mut World, registry:
     clone_rollback_world_entities(source_world, target_world, &mut entity_map, &registry)?;
     clone_rollback_world_resources(source_world, target_world, &mut entity_map, &registry)?;
     Ok(())
+}
+
+pub trait AppBuilderRollbackUtil{
+    fn add_rollback_startup_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_startup_stage_after<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_startup_stage_before<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_startup_system_to_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        system: impl Into<SystemDescriptor>
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_stage_after<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_stage_before<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder;
+
+    fn add_rollback_system_to_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        system: impl Into<SystemDescriptor>
+    ) -> &mut AppBuilder;
+}
+
+impl AppBuilderRollbackUtil for AppBuilder{
+    fn add_rollback_startup_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackStartupSchedule>()
+            .expect("Add RollbackStartupSchedule to app!")
+            .add_stage(label, stage);
+
+        self
+    }
+
+    fn add_rollback_startup_stage_after<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackStartupSchedule>()
+            .expect("Add RollbackStartupSchedule to app!")
+            .add_stage_after(target, label, stage);
+
+        self
+    }
+
+    fn add_rollback_startup_stage_before<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackStartupSchedule>()
+            .expect("Add RollbackStartupSchedule to app!")
+            .add_stage_before(target, label, stage);
+
+        self
+    }
+
+    fn add_rollback_startup_system_to_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        system: impl Into<SystemDescriptor>
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackStartupSchedule>()
+            .expect("Add RollbackStartupSchedule to app!")
+            .add_system_to_stage(label, system);
+
+        self
+    }
+
+    fn add_rollback_stage<S: Stage>(
+        &mut self,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackSchedule>()
+            .expect("Add RollbackSchedule to app!")
+            .add_stage(label, stage);
+
+        self
+    }
+
+    fn add_rollback_stage_after<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackSchedule>()
+            .expect("Add RollbackSchedule to app!")
+            .add_stage_after(target, label, stage);
+
+        self
+    }
+
+    fn add_rollback_stage_before<S: Stage>(
+        &mut self,
+        target: impl StageLabel,
+        label: impl StageLabel,
+        stage: S
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackSchedule>()
+            .expect("Add RollbackSchedule to app!")
+            .add_stage_before(target, label, stage);
+
+        self
+    }
+
+    fn add_rollback_system_to_stage<S>(
+        &mut self,
+        label: impl StageLabel,
+        system: impl Into<SystemDescriptor>
+    ) -> &mut AppBuilder {
+        self
+            .world_mut()
+            .get_resource_mut::<RollbackSchedule>()
+            .expect("Add RollbackSchedule to app!")
+            .add_system_to_stage( label, system);
+
+        self
+    }
 }
