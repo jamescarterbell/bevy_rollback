@@ -37,7 +37,7 @@ pub(crate) struct SyncedRollback;
 
 /// A component on an outer world entity with a handle to a Rollback World entity.
 pub struct Synced{
-    target: Entity,
+    pub target: Entity,
 }
 
 pub fn sync_rollback_entities(
