@@ -17,15 +17,11 @@ pub(crate) fn rollback_system(
         let rollback_world = rollback_buffer.get_world_mut(target as usize).expect("Couldn't find world in buffer");
         overwrite_world(&rollback_world, &mut current_world, &rollback_registry).unwrap();
     }
-    println!("{}, {}", rollback_buffer.rollback_needed(), rollback_buffer.current_frame());
     for target in (rollback_buffer.current_frame() as isize - rollback_buffer.rollback_needed())..=rollback_buffer.current_frame() as isize{
         if let Some(overrides) = rollback_buffer.get_override_mut(&(target as isize)){
-            println!("Nice cock");
             overrides.run(&mut current_world);
-            println!("Nicer cock");
         }
         rollback_buffer.push_world(&(target as usize), &current_world, &rollback_registry).unwrap();
-        println!("U is very smart");
         rollback_schedule.run_once(&mut current_world);
     }
 
