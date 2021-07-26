@@ -45,6 +45,7 @@ impl DerefMut for RollbackWorld{
 #[derive(StageLabel, PartialEq, Eq, Hash, Clone, Debug)]
 pub enum RollbackStage{
     Update,
+    PostUpdate,
     Startup,
 }
 
@@ -72,8 +73,10 @@ impl Plugin for RollbackPlugin{
             .insert_resource(RollbackStartupSchedule::default())
             .add_stage_before(CoreStage::Update, RollbackStage::Update, SystemStage::parallel()
                 .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
-            .add_system_to_stage(RollbackStage::Update, rollback_system.system())
-            .add_system_to_stage(RollbackStage::Update, sync_rollback_entities.system())
+            .add_stage_after(RollbackStage::Update, RollbackStage::PostUpdate, SystemStage::parallel()
+                .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
+            .add_system_set_to_stage(RollbackStage::Update, SystemSet::new().with_system(rollback_system.system()).label("rollback"))
+            .add_system_set_to_stage(RollbackStage::Update, SystemSet::new().with_system(sync_rollback_entities.system()).after("rollback"))
             .add_startup_stage(RollbackStage::Startup, SystemStage::parallel())
             .add_startup_system_to_stage(RollbackStage::Startup, rollback_startup.system());
     }
@@ -144,7 +147,7 @@ mod tests {
     #[test]
     fn inc_test(){
         let mut world = RollbackWorld::default();
-        let mut rollback_buffer = RollbackBuffer::with_capacity(101);
+        let rollback_buffer = RollbackBuffer::with_capacity(101);
         let mut rollback_schedule = RollbackSchedule::default();
         let mut registry = RollbackRegistry::default();
 
@@ -154,7 +157,7 @@ mod tests {
         world.insert_resource(Incer{inc: 1});
 
         let system = Box::new(|mut current: ResMut<isize>, inc: Res<Incer>|{
-            println!("{} - {}", *current, inc.inc);
+            println!("{} + {}", *current, inc.inc);
             *current += inc.inc;
         });
         rollback_schedule.add_stage("test", SystemStage::parallel());
@@ -177,7 +180,7 @@ mod tests {
 
         assert_eq!(100, *larger_world.get_resource::<RollbackWorld>().unwrap().get_resource::<isize>().unwrap());
 
-        larger_world.get_resource_mut::<RollbackBuffer>().unwrap().add_overrides(&0, Box::new(|mut incer: ResMut<Incer>|{
+        larger_world.get_resource_mut::<RollbackBuffer>().unwrap().add_overrides_relative(&100, Box::new(|mut incer: ResMut<Incer>|{
             incer.inc = -1;
         }).system());
 

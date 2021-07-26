@@ -13,9 +13,9 @@ use ron::de::*;
 
 pub struct RollbackBuffer{
     buffer: Vec<Option<World>>,
-    overrides: HashMap<usize, SystemStage>,
+    overrides: HashMap<isize, SystemStage>,
     current_frame: usize,
-    rollback_needed: usize,
+    rollback_needed: isize,
 }
 
 impl RollbackBuffer{
@@ -41,6 +41,10 @@ impl RollbackBuffer{
             .get_mut(index % len)
             .unwrap()
             .replace(clone_world(world, &registry)?);
+
+        if let Some(_) = old_world{
+            self.overrides.remove(&(*index as isize));
+        };
 
         Ok(old_world)
     }
@@ -69,27 +73,30 @@ impl RollbackBuffer{
             .as_mut()
     }
 
-    pub fn add_overrides(&mut self, index: &usize, overrides: impl System<In = (), Out = ()>){
+    pub fn add_overrides_relative(&mut self, index: &isize, overrides: impl System<In = (), Out = ()>){
         self
             .overrides
-            .entry(*index)
+            .entry(self.current_frame as isize - *index)
             .or_insert(SystemStage::parallel())
             .add_system(overrides);
-        let relative_frame = self.current_frame - index;
-        if relative_frame > self.rollback_needed{
-            self.rollback_needed = relative_frame;
+        if *index > self.rollback_needed as isize{
+            self.rollback_needed = *index;
         }
     }
 
-    pub fn remove_override(&mut self, index: &usize) -> Option<SystemStage>{
+    pub fn remove_override(&mut self, index: &isize) -> Option<SystemStage>{
         self.overrides.remove(&index)
+    }
+
+    pub fn get_override_mut(&mut self, index: &isize) -> Option<&mut SystemStage>{
+        self.overrides.get_mut(&index)
     }
 
     pub fn current_frame(&self) -> usize{
         self.current_frame
     }
 
-    pub fn rollback_needed(&self) -> usize{
+    pub fn rollback_needed(&self) -> isize{
         self.rollback_needed
     }
 

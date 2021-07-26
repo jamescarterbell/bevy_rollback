@@ -54,7 +54,7 @@ impl Default for RollbackRegistry{
 }
 
 impl RollbackRegistry{
-    pub fn register<T: Any + Reflect + GetTypeRegistration + FromWorld + Serialize>(&mut self) -> &mut Self{
+    pub fn register<T: Any + Reflect + GetTypeRegistration + FromWorld>(&mut self) -> &mut Self{
         let mut registry = self.registry.write();
         registry.register::<T>();
         let registration = registry

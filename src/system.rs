@@ -13,17 +13,19 @@ pub(crate) fn rollback_system(
     rollback_registry: Res<RollbackRegistry>,
 ){
     if rollback_buffer.rollback_needed() > 0{
-        let target = rollback_buffer.current_frame() - rollback_buffer.rollback_needed();
-        let rollback_world = rollback_buffer.get_world_mut(target).expect("Couldn't find world in buffer");
+        let target = rollback_buffer.current_frame() as isize - rollback_buffer.rollback_needed();
+        let rollback_world = rollback_buffer.get_world_mut(target as usize).expect("Couldn't find world in buffer");
         overwrite_world(&rollback_world, &mut current_world, &rollback_registry).unwrap();
     }
-
-    for relative in (0..=rollback_buffer.rollback_needed()).rev(){
-        let target = rollback_buffer.current_frame() - relative;
-        if let Some(mut overrides) = rollback_buffer.remove_override(&target){
+    println!("{}, {}", rollback_buffer.rollback_needed(), rollback_buffer.current_frame());
+    for target in (rollback_buffer.current_frame() as isize - rollback_buffer.rollback_needed())..=rollback_buffer.current_frame() as isize{
+        if let Some(overrides) = rollback_buffer.get_override_mut(&(target as isize)){
+            println!("Nice cock");
             overrides.run(&mut current_world);
+            println!("Nicer cock");
         }
-        rollback_buffer.push_world(&target, &current_world, &rollback_registry).unwrap();
+        rollback_buffer.push_world(&(target as usize), &current_world, &rollback_registry).unwrap();
+        println!("U is very smart");
         rollback_schedule.run_once(&mut current_world);
     }
 
@@ -43,10 +45,10 @@ pub struct Synced{
 pub fn sync_rollback_entities(
     mut commands: Commands,
     mut rollback_world: ResMut<RollbackWorld>,
-    synced: Query<Entity, With<Synced>>,
+    synced: Query<(Entity, &Synced)>,
 ){
-    for entity in synced.iter(){
-        if let None = rollback_world.get_entity(entity){
+    for (entity, synced) in synced.iter(){
+        if let None = rollback_world.get_entity(synced.target){
             commands
                 .entity(entity)
                 .despawn();
