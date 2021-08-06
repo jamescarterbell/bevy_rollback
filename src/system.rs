@@ -59,6 +59,7 @@ pub fn sync_rollback_entities(
             .insert(
                 Synced{target: entity.clone()}
             );
+            
         syncable.push(entity.clone());
     }
 

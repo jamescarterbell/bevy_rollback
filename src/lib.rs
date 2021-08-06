@@ -76,7 +76,7 @@ impl Plugin for RollbackPlugin{
             .add_stage_after(RollbackStage::Update, RollbackStage::PostUpdate, SystemStage::parallel()
                 .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
             .add_system_set_to_stage(RollbackStage::Update, SystemSet::new().with_system(rollback_system.system()).label("rollback"))
-            .add_system_set_to_stage(RollbackStage::Update, SystemSet::new().with_system(sync_rollback_entities.system()).after("rollback"))
+            .add_system_set_to_stage(RollbackStage::PostUpdate, SystemSet::new().with_system(sync_rollback_entities.system()).label("sync"))
             .add_startup_stage(RollbackStage::Startup, SystemStage::parallel())
             .add_startup_system_to_stage(RollbackStage::Startup, rollback_startup.system());
     }
