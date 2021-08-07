@@ -44,6 +44,7 @@ impl DerefMut for RollbackWorld{
 
 #[derive(StageLabel, PartialEq, Eq, Hash, Clone, Debug)]
 pub enum RollbackStage{
+    PreUpdate,
     Update,
     PostUpdate,
     Startup,
@@ -72,6 +73,8 @@ impl Plugin for RollbackPlugin{
             .insert_resource(RollbackSchedule::default())
             .insert_resource(RollbackStartupSchedule::default())
             .add_stage_before(CoreStage::Update, RollbackStage::Update, SystemStage::parallel()
+                .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
+            .add_stage_before(RollbackStage::Update, RollbackStage::PreUpdate, SystemStage::parallel()
                 .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
             .add_stage_after(RollbackStage::Update, RollbackStage::PostUpdate, SystemStage::parallel()
                 .with_run_criteria(FixedTimestep::steps_per_second(self.rate)))
